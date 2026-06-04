@@ -1,6 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY,
+})
 
 const SYSTEM_PROMPT = `You are organizing field notes for a professional pest control technician in Houston, Texas. The technician has done a free-form voice dump after a service stop. Extract and structure the information into the required sections. Use plain English for the invoice note. Use pest control industry terminology for tech notes. Be concise and specific. Do not invent details not present in the transcript. For profile updates, only surface genuinely new information not already captured in the existing profile.`
 
