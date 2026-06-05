@@ -1,6 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk'
-
-
 const SYSTEM_PROMPT = `You are organizing field notes for a professional pest control technician in Houston, Texas. The technician has done a free-form voice dump after a service stop. Extract and structure the information into the required sections. Use plain English for the invoice note. Use pest control industry terminology for tech notes. Be concise and specific. Do not invent details not present in the transcript. For profile updates, only surface genuinely new information not already captured in the existing profile.`
 
 const PROFILE_FIELDS = {
@@ -69,6 +66,23 @@ function buildProfileUpdateShape() {
   return JSON.stringify(shape, null, 2)
 }
 
+async function callClaude(apiKey, body) {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify(body),
+  })
+  const data = await response.json()
+  if (!response.ok) {
+    throw new Error(data?.error?.message || `Anthropic error ${response.status}`)
+  }
+  return data.content[0].text.trim()
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
@@ -78,17 +92,14 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY
   if (!apiKey) {
-    return res.status(500).json({ error: 'ANTHROPIC_API_KEY is not set in Vercel environment variables' })
+    return res.status(500).json({ error: 'ANTHROPIC_API_KEY environment variable is not set' })
   }
-
-  const anthropic = new Anthropic({ apiKey })
 
   try {
     const { mode, transcript, profile, existing, newEntry } = req.body
 
-    // Pest summary rewrite mode
     if (mode === 'pest_summary') {
-      const msg = await anthropic.messages.create({
+      const text = await callClaude(apiKey, {
         model: 'claude-sonnet-4-5-20251022',
         max_tokens: 512,
         system: SYSTEM_PROMPT,
@@ -97,30 +108,27 @@ export default async function handler(req, res) {
           content: `Rewrite the pest activity running summary for this property by incorporating the new pest log entry. Keep it concise (under 200 words), use plain language, and preserve all historically relevant pest patterns from the existing summary.\n\nExisting summary:\n${existing || 'None yet.'}\n\nNew pest log entry:\n${newEntry}\n\nRespond with only the new summary text, no preamble.`,
         }],
       })
-      return res.status(200).json({ summary: msg.content[0].text.trim() })
+      return res.status(200).json({ summary: text })
     }
 
-    // Normal note generation mode
     const profileContext = buildProfileContext(profile)
     const profileShape = buildProfileUpdateShape()
 
     const userMessage = `EXISTING PROPERTY PROFILE:\n${profileContext}\n\n---\n\nTECHNICIAN VOICE DUMP TRANSCRIPT:\n${transcript}\n\n---\n\nGenerate structured notes in this exact JSON format. For profileUpdates, only include fields where the transcript contains new information not already in the existing profile — set fields to null if nothing new was said. Do not add markdown or any text outside the JSON.\n\n{\n  "invoice": "3-5 sentence plain-English note for the customer",\n  "tech": "bullet-point tech notes using industry terminology",\n  "pestLog": "3-5 sentence dated pest log entry",\n  "profileUpdates": ${profileShape}\n}`
 
-    const msg = await anthropic.messages.create({
+    const raw = await callClaude(apiKey, {
       model: 'claude-sonnet-4-5-20251022',
       max_tokens: 2048,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userMessage }],
     })
 
-    const raw = msg.content[0].text.trim()
-    // Strip any accidental markdown fences
     const cleaned = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
     const parsed = JSON.parse(cleaned)
 
     res.status(200).json(parsed)
   } catch (err) {
-    console.error('Generate error:', err)
-    res.status(500).json({ error: err.message || 'Generation failed' })
+    console.error('Generate error:', err?.message || err)
+    res.status(500).json({ error: err?.message || 'Generation failed' })
   }
 }
