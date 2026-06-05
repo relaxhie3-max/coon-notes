@@ -1,14 +1,6 @@
-import { writeFileSync, readFileSync, unlinkSync } from 'fs'
+import { writeFileSync, unlinkSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '25mb',
-    },
-  },
-}
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -24,18 +16,19 @@ export default async function handler(req, res) {
 
   let tmpFile = null
   try {
-    const { audio, mimeType } = req.body
-    if (!audio) return res.status(400).json({ error: 'No audio provided' })
+    const { audioUrl, mimeType } = req.body
+    if (!audioUrl) return res.status(400).json({ error: 'No audioUrl provided' })
 
-    const buffer = Buffer.from(audio, 'base64')
+    // Download audio from Supabase Storage — no Vercel body size limit involved
+    const audioRes = await fetch(audioUrl)
+    if (!audioRes.ok) throw new Error(`Failed to download audio: ${audioRes.status}`)
+    const buffer = Buffer.from(await audioRes.arrayBuffer())
+
     const ext = mimeType?.includes('mp4') ? 'm4a' : mimeType?.includes('ogg') ? 'ogg' : 'webm'
-
     tmpFile = join(tmpdir(), `fn-audio-${Date.now()}.${ext}`)
     writeFileSync(tmpFile, buffer)
 
-    const fileBuffer = readFileSync(tmpFile)
-    const blob = new Blob([fileBuffer], { type: mimeType || 'audio/webm' })
-
+    const blob = new Blob([buffer], { type: mimeType || 'audio/webm' })
     const form = new FormData()
     form.append('file', blob, `audio.${ext}`)
     form.append('model', 'whisper-1')

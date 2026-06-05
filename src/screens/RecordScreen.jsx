@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { supabase } from '../lib/supabase'
 
 function getSupportedMimeType() {
   const types = [
@@ -10,15 +11,6 @@ function getSupportedMimeType() {
   ]
   if (typeof MediaRecorder === 'undefined') return 'audio/mp4'
   return types.find(t => MediaRecorder.isTypeSupported(t)) || 'audio/mp4'
-}
-
-function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result.split(',')[1])
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
-  })
 }
 
 function formatTime(s) {
@@ -87,12 +79,27 @@ export default function RecordScreen({ navigate, property }) {
 
   const transcribeBlob = async (blob, mimeType) => {
     setPhase('transcribing')
+    let storagePath = null
     try {
-      const base64 = await blobToBase64(blob)
+      // Upload audio directly to Supabase Storage — bypasses Vercel's 4.5 MB body limit
+      const ext = mimeType?.includes('mp4') ? 'm4a' : mimeType?.includes('ogg') ? 'ogg' : 'webm'
+      storagePath = `recordings/${Date.now()}.${ext}`
+      const { error: uploadErr } = await supabase.storage
+        .from('audio')
+        .upload(storagePath, blob, { contentType: mimeType, upsert: true })
+      if (uploadErr) throw new Error(`Upload failed: ${uploadErr.message}`)
+
+      // Get a short-lived signed URL so the API can download it
+      const { data: signedData, error: signErr } = await supabase.storage
+        .from('audio')
+        .createSignedUrl(storagePath, 120)
+      if (signErr) throw new Error(`Signed URL failed: ${signErr.message}`)
+
+      // Ask the API to transcribe from the URL
       const res = await fetch('/api/whisper', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audio: base64, mimeType }),
+        body: JSON.stringify({ audioUrl: signedData.signedUrl, mimeType }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -104,7 +111,12 @@ export default function RecordScreen({ navigate, property }) {
     } catch (err) {
       setError(`Transcription failed: ${err.message}. You can type your notes below instead.`)
       setTranscript('')
-      setPhase('transcribed') // still allow manual entry
+      setPhase('transcribed')
+    } finally {
+      // Clean up the temporary audio file
+      if (storagePath) {
+        supabase.storage.from('audio').remove([storagePath]).catch(() => {})
+      }
     }
   }
 
