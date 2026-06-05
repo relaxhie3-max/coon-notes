@@ -1,7 +1,8 @@
-import OpenAI, { toFile } from 'openai'
+import OpenAI from 'openai'
+import { writeFileSync, createReadStream, unlinkSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 
-// Raise Vercel's body size limit from the default 1 MB to 25 MB
-// to accommodate base64-encoded audio (a 10-min recording ≈ 10–15 MB base64)
 export const config = {
   api: {
     bodyParser: {
@@ -21,6 +22,8 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
+  let tmpFile = null
+
   try {
     const { audio, mimeType } = req.body
 
@@ -29,17 +32,21 @@ export default async function handler(req, res) {
     const buffer = Buffer.from(audio, 'base64')
     const ext = mimeType?.includes('mp4') ? 'm4a' : mimeType?.includes('ogg') ? 'ogg' : 'webm'
 
-    const file = await toFile(buffer, `audio.${ext}`, { type: mimeType || 'audio/webm' })
+    // Write to a temp file so the OpenAI SDK gets a proper ReadStream with a filename
+    tmpFile = join(tmpdir(), `fn-audio-${Date.now()}.${ext}`)
+    writeFileSync(tmpFile, buffer)
 
     const transcription = await openai.audio.transcriptions.create({
-      file,
+      file: createReadStream(tmpFile),
       model: 'whisper-1',
       language: 'en',
     })
 
     res.status(200).json({ transcript: transcription.text })
   } catch (err) {
-    console.error('Transcription error:', err)
-    res.status(500).json({ error: err.message || 'Transcription failed' })
+    console.error('Transcription error:', err?.message || err)
+    res.status(500).json({ error: err?.message || 'Transcription failed' })
+  } finally {
+    if (tmpFile) try { unlinkSync(tmpFile) } catch {}
   }
 }
