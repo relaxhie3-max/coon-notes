@@ -44,8 +44,12 @@ export default function PinScreen({ onAuth }) {
 
   return (
     <div className="pin-screen">
-      <div style={{ fontSize: 56, marginBottom: 12 }}>📋</div>
-      <h1 className="pin-title">Field Notes</h1>
+      <img
+        src="/icons/icon-192.png"
+        alt="Raccoon Notes"
+        style={{ width: 96, height: 96, borderRadius: 22, marginBottom: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}
+      />
+      <h1 className="pin-title">Raccoon Notes</h1>
       <p className="pin-subtitle">Enter your PIN to continue</p>
 
       <div

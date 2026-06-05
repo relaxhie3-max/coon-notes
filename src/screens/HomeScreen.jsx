@@ -59,7 +59,7 @@ export default function HomeScreen({ navigate }) {
     <div className="screen">
       <div className="header">
         <div style={{ flex: 1 }}>
-          <h1>Field Notes</h1>
+          <h1>Raccoon Notes</h1>
         </div>
         <button
           className="btn btn-sm"
