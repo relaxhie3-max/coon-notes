@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useRecording } from '../context/RecordingContext'
+import CheatSheet from '../components/CheatSheet'
 
 function formatTime(s) {
   const m = Math.floor(s / 60).toString().padStart(2, '0')
@@ -127,6 +128,9 @@ export default function RecordScreen({ navigate, property, mode = 'visit' }) {
           )}
 
         </div>
+
+        {/* Cheat sheet — visible while recording */}
+        {isRecording && <CheatSheet property={property} />}
 
         {micDenied && (
           <div className="pad">
