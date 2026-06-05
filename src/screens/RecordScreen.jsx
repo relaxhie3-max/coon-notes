@@ -13,6 +13,22 @@ function getSupportedMimeType() {
   return types.find(t => MediaRecorder.isTypeSupported(t)) || 'audio/mp4'
 }
 
+function CopyButton({ text }) {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text || '')
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {}
+  }
+  return (
+    <button className="btn btn-ghost btn-sm" onClick={copy} style={{ minWidth: 72 }}>
+      {copied ? '✓ Copied' : 'Copy'}
+    </button>
+  )
+}
+
 function formatTime(s) {
   const m = Math.floor(s / 60).toString().padStart(2, '0')
   const sec = (s % 60).toString().padStart(2, '0')
@@ -232,9 +248,14 @@ export default function RecordScreen({ navigate, property }) {
             {error && <div className="error-box">{error}</div>}
 
             <div className="form-group">
-              <label className="label" htmlFor="transcript">
-                {phase === 'transcribed' && !error ? 'Transcript — review and edit before generating' : 'Type your field notes'}
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <label className="label" htmlFor="transcript" style={{ margin: 0 }}>
+                  {phase === 'transcribed' && !error ? 'Transcript — review and edit before generating' : 'Type your field notes'}
+                </label>
+                {transcript && (
+                  <CopyButton text={transcript} />
+                )}
+              </div>
               <textarea
                 id="transcript"
                 className="textarea"
