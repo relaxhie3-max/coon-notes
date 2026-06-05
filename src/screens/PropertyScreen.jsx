@@ -159,7 +159,7 @@ export default function PropertyScreen({ navigate, property: initialProperty }) 
     setVisitsLoading(true)
     const { data } = await supabase
       .from('visits')
-      .select('id, date, invoice_note, created_at')
+      .select('id, date, mode, log_summary, invoice_note, tech_notes, pest_log_entry, profile_update_suggestion, transcript, created_at')
       .eq('property_id', prop.id)
       .order('created_at', { ascending: false })
     setVisits(data || [])
@@ -264,12 +264,20 @@ export default function PropertyScreen({ navigate, property: initialProperty }) 
   /* ── Visits tab ─────────────────────────────────────────── */
   const VisitsTab = () => (
     <div className="scrollable">
-      <div className="pad">
+      <div className="pad" style={{ display: 'flex', gap: 10 }}>
         <button
-          className="btn btn-primary btn-full"
-          onClick={() => navigate('record', { property: prop })}
+          className="btn btn-primary"
+          style={{ flex: 1 }}
+          onClick={() => navigate('record', { property: prop, mode: 'visit' })}
         >
-          🎙 Start New Visit Note
+          🎙 Visit Note
+        </button>
+        <button
+          className="btn btn-ghost"
+          style={{ flex: 1 }}
+          onClick={() => navigate('record', { property: prop, mode: 'quick_log' })}
+        >
+          📋 Quick Log
         </button>
       </div>
 
@@ -282,21 +290,49 @@ export default function PropertyScreen({ navigate, property: initialProperty }) 
       {!visitsLoading && visits.length === 0 && (
         <div className="empty-state">
           <div className="empty-state-icon">📝</div>
-          <div className="empty-state-title">No visits yet</div>
-          <div className="empty-state-sub">Tap above to record your first visit note</div>
+          <div className="empty-state-title">No entries yet</div>
+          <div className="empty-state-sub">Record a visit note or log a quick update</div>
         </div>
       )}
 
       {!visitsLoading && visits.length > 0 && (
         <div style={{ background: 'white' }}>
-          {visits.map(v => (
-            <div key={v.id} className="visit-item">
-              <div className="visit-date">{formatDate(v.created_at)}</div>
-              <div className="visit-preview">
-                {v.invoice_note ? v.invoice_note.slice(0, 100) + (v.invoice_note.length > 100 ? '…' : '') : 'No invoice note'}
+          {visits.map(v => {
+            const isQuickLog = v.mode === 'quick_log'
+            return (
+              <div
+                key={v.id}
+                className="visit-item"
+                style={{ cursor: 'pointer', background: isQuickLog ? '#f8fafc' : 'white' }}
+                onClick={() => navigate('visitDetail', { property: prop, visit: v })}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: 15 }}>{isQuickLog ? '📋' : '📝'}</span>
+                  <span className="visit-date" style={{ margin: 0 }}>
+                    {formatDate(v.created_at)}
+                    {isQuickLog && (
+                      <span style={{
+                        marginLeft: 8, fontSize: 11, fontWeight: 700,
+                        background: '#e0f2fe', color: '#0369a1',
+                        padding: '2px 7px', borderRadius: 10,
+                      }}>
+                        QUICK LOG
+                      </span>
+                    )}
+                  </span>
+                  <span style={{ marginLeft: 'auto', color: '#94a3b8', fontSize: 16 }}>›</span>
+                </div>
+                <div className="visit-preview">
+                  {isQuickLog
+                    ? (v.log_summary || 'Quick log entry')
+                    : (v.invoice_note
+                        ? v.invoice_note.slice(0, 100) + (v.invoice_note.length > 100 ? '…' : '')
+                        : 'No invoice note')
+                  }
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

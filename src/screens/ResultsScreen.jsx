@@ -13,11 +13,7 @@ function CopyButton({ text }) {
     } catch {}
   }
   return (
-    <button
-      className="btn btn-ghost btn-sm"
-      onClick={copy}
-      style={{ minWidth: 80 }}
-    >
+    <button className="btn btn-ghost btn-sm" onClick={copy} style={{ minWidth: 80 }}>
       {copied ? '✓ Copied' : 'Copy'}
     </button>
   )
@@ -37,45 +33,53 @@ function ResultSection({ title, content, accent }) {
   )
 }
 
+const FIELD_LABELS = {
+  alert_allergies: 'Allergies', alert_pets: 'Pets', alert_reentry: 'Re-entry',
+  alert_offlimits: 'Off-limits', alert_safety: 'Safety',
+  client_primary_name: 'Primary name', client_personality: 'Personality',
+  client_spouse: 'Spouse', client_children: 'Children', client_household: 'Household',
+  client_occupations: 'Occupations', client_background: 'Background',
+  client_time_at_address: 'Time at address', client_language_comms: 'Language/comms',
+  client_contact_preference: 'Contact pref.', client_referral_source: 'Referral',
+  client_avoid: 'Avoid', client_payment_notes: 'Payment', client_general: 'Client general',
+  property_structure_type: 'Structure', property_sqft: 'Sq ft', property_perimeter_ft: 'Perimeter',
+  property_year_built: 'Year built', property_rear_access: 'Rear access',
+  property_water_access: 'Water access', property_crawlspace: 'Crawlspace',
+  property_attic_access: 'Attic access', property_garage: 'Garage',
+  property_construction_notes: 'Construction', property_landscaping: 'Landscaping',
+  property_general: 'Property general',
+}
+
+const SECTION_LABELS = {
+  alerts: '⚠️ Service Alerts',
+  client: '👤 About Client',
+  property: '🏠 Property Notes',
+}
+
 function ProfileUpdatePreview({ updates }) {
-  const LABELS = {
-    alert_allergies: 'Allergies', alert_pets: 'Pets', alert_reentry: 'Re-entry',
-    alert_offlimits: 'Off-limits', alert_safety: 'Safety',
-    client_primary_name: 'Primary name', client_personality: 'Personality',
-    client_spouse: 'Spouse', client_children: 'Children', client_household: 'Household',
-    client_occupations: 'Occupations', client_background: 'Background',
-    client_time_at_address: 'Time at address', client_language_comms: 'Language/comms',
-    client_contact_preference: 'Contact pref.', client_referral_source: 'Referral',
-    client_avoid: 'Avoid', client_payment_notes: 'Payment', client_general: 'Client general',
-    property_structure_type: 'Structure', property_sqft: 'Sq ft', property_perimeter_ft: 'Perimeter',
-    property_year_built: 'Year built', property_rear_access: 'Rear access',
-    property_water_access: 'Water access', property_crawlspace: 'Crawlspace',
-    property_attic_access: 'Attic access', property_garage: 'Garage',
-    property_construction_notes: 'Construction', property_landscaping: 'Landscaping',
-    property_general: 'Property general',
-  }
-
-  const SECTION_LABELS = { alerts: '⚠️ Service Alerts', client: '👤 About Client', property: '🏠 Property Notes' }
-
   const hasAny = Object.entries(updates || {}).some(([, fields]) =>
     Object.values(fields || {}).some(v => v && v !== 'null')
   )
 
   if (!hasAny) {
-    return <p style={{ color: 'var(--text-muted)', fontSize: 15, fontStyle: 'italic' }}>No new profile information found in this visit.</p>
+    return (
+      <p style={{ color: 'var(--text-muted)', fontSize: 15, fontStyle: 'italic' }}>
+        No new profile information found.
+      </p>
+    )
   }
 
   return (
     <div>
       {Object.entries(updates || {}).map(([section, fields]) => {
         const items = Object.entries(fields || {}).filter(([, v]) => v && v !== 'null')
-        if (items.length === 0) return null
+        if (!items.length) return null
         return (
           <div key={section} className="update-section">
             <h4>{SECTION_LABELS[section] || section}</h4>
             {items.map(([key, val]) => (
               <div key={key} className="update-item">
-                <span className="update-key">{LABELS[key] || key}</span>
+                <span className="update-key">{FIELD_LABELS[key] || key}</span>
                 <span className="update-val">{val}</span>
               </div>
             ))}
@@ -86,7 +90,7 @@ function ProfileUpdatePreview({ updates }) {
   )
 }
 
-/* ─── Main component ────────────────────────────────────────── */
+/* ─── Save logic helpers ────────────────────────────────────── */
 
 function hasValue(v) {
   return v && v !== 'null' && String(v).trim() !== ''
@@ -98,9 +102,12 @@ function appendField(existing, newVal, dateStr) {
   return existing ? `${existing}\n${entry}` : entry
 }
 
-export default function ResultsScreen({ navigate, property, transcript, notes }) {
+/* ─── Main component ────────────────────────────────────────── */
+
+export default function ResultsScreen({ navigate, property, transcript, notes, mode = 'visit' }) {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const isQuickLog = mode === 'quick_log'
 
   const dateStr = new Date().toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric'
@@ -115,30 +122,30 @@ export default function ResultsScreen({ navigate, property, transcript, notes })
       const { error: visitErr } = await supabase.from('visits').insert({
         property_id: property.id,
         transcript,
-        invoice_note: notes.invoice || null,
-        tech_notes: notes.tech || null,
-        pest_log_entry: notes.pestLog || null,
+        mode,
+        log_summary: isQuickLog ? (notes.summary || null) : null,
+        invoice_note: !isQuickLog ? (notes.invoice || null) : null,
+        tech_notes: !isQuickLog ? (notes.tech || null) : null,
+        pest_log_entry: !isQuickLog ? (notes.pestLog || null) : null,
         profile_update_suggestion: notes.profileUpdates || null,
       })
       if (visitErr) throw visitErr
 
-      // 2. Build property field updates by appending new info with date stamp
+      // 2. Apply profile field updates
       const updates = {}
       const applySection = (sectionKey) => {
         const fields = notes.profileUpdates?.[sectionKey]
         if (!fields) return
         for (const [key, val] of Object.entries(fields)) {
-          if (hasValue(val)) {
-            updates[key] = appendField(property[key], val, dateStr)
-          }
+          if (hasValue(val)) updates[key] = appendField(property[key], val, dateStr)
         }
       }
       applySection('alerts')
       applySection('client')
       applySection('property')
 
-      // 3. Rewrite pest_running_summary if we have a new pest log entry
-      if (notes.pestLog) {
+      // 3. Rewrite pest_running_summary only for visit notes
+      if (!isQuickLog && notes.pestLog) {
         const summaryRes = await fetch('/api/notes', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -154,16 +161,13 @@ export default function ResultsScreen({ navigate, property, transcript, notes })
         }
       }
 
-      // 4. Apply updates to property record
+      // 4. Apply updates to property
       if (Object.keys(updates).length > 0) {
         const { error: propErr } = await supabase
-          .from('properties')
-          .update(updates)
-          .eq('id', property.id)
+          .from('properties').update(updates).eq('id', property.id)
         if (propErr) throw propErr
       }
 
-      // Navigate back with updated property
       navigate('property', { property: { ...property, ...updates } })
     } catch (err) {
       setSaveError(err.message || 'Save failed. Please try again.')
@@ -176,13 +180,11 @@ export default function ResultsScreen({ navigate, property, transcript, notes })
       <div className="header">
         <button
           className="btn btn-icon"
-          onClick={() => navigate('record', { property })}
+          onClick={() => navigate('record', { property, mode })}
           disabled={saving}
-        >
-          ←
-        </button>
+        >←</button>
         <div>
-          <h1 style={{ fontSize: 16 }}>Visit Notes</h1>
+          <h1 style={{ fontSize: 16 }}>{isQuickLog ? 'Quick Log' : 'Visit Notes'}</h1>
           <div className="header-subtitle">{property.client_name}</div>
         </div>
       </div>
@@ -190,25 +192,37 @@ export default function ResultsScreen({ navigate, property, transcript, notes })
       <div className="scrollable">
         <div className="pad gap" style={{ paddingBottom: 32 }}>
 
-          <ResultSection
-            title="📄 Invoice Note  —  Customer Facing"
-            content={notes?.invoice}
-            accent="#2563eb"
-          />
+          {/* Quick Log: just summary + profile updates */}
+          {isQuickLog && (
+            <ResultSection
+              title="📋 Log Summary"
+              content={notes?.summary}
+              accent="#0891b2"
+            />
+          )}
 
-          <ResultSection
-            title="🔧 Tech Notes  —  Callback Reference"
-            content={notes?.tech}
-            accent="#7c3aed"
-          />
+          {/* Visit Note: all four sections */}
+          {!isQuickLog && (
+            <>
+              <ResultSection
+                title="📄 Invoice Note  —  Customer Facing"
+                content={notes?.invoice}
+                accent="#2563eb"
+              />
+              <ResultSection
+                title="🔧 Tech Notes  —  Callback Reference"
+                content={notes?.tech}
+                accent="#7c3aed"
+              />
+              <ResultSection
+                title="🐛 Pest Log Entry"
+                content={notes?.pestLog}
+                accent="#059669"
+              />
+            </>
+          )}
 
-          <ResultSection
-            title="🐛 Pest Log Entry"
-            content={notes?.pestLog}
-            accent="#059669"
-          />
-
-          {/* Profile update suggestion */}
+          {/* Profile updates — both modes */}
           <div className="result-section">
             <div className="result-section-header" style={{ background: '#fef3c718' }}>
               <span className="result-section-title" style={{ color: '#92400e' }}>
@@ -229,8 +243,8 @@ export default function ResultsScreen({ navigate, property, transcript, notes })
             disabled={saving}
           >
             {saving
-              ? <><span className="spinner" /> Saving visit…</>
-              : '✓ Save Visit & Update Profile'}
+              ? <><span className="spinner" /> Saving…</>
+              : isQuickLog ? '✓ Save Log & Update Profile' : '✓ Save Visit & Update Profile'}
           </button>
 
           <button

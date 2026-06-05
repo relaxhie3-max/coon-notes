@@ -114,6 +114,21 @@ export default async function handler(req, res) {
     const profileContext = buildProfileContext(profile)
     const profileShape = buildProfileUpdateShape()
 
+    // Quick Log — call or conversation, no visit/treatment occurred
+    if (mode === 'quick_log') {
+      const userMessage = `EXISTING PROPERTY PROFILE:\n${profileContext}\n\n---\n\nNOTE / CALL TRANSCRIPT:\n${transcript}\n\n---\n\nThis is a quick log entry from a phone call, conversation, or casual observation — no service visit occurred. Extract only profile-relevant information. Return this exact JSON format with no markdown:\n\n{\n  "summary": "1-2 sentence plain description of what was discussed or noted",\n  "profileUpdates": ${profileShape}\n}\n\nFor profileUpdates, only include fields where genuinely new information was found. Set fields to null if nothing new was said.`
+
+      const raw = await callClaude(apiKey, {
+        model: 'claude-sonnet-4-5',
+        max_tokens: 1024,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: userMessage }],
+      })
+      const cleaned = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
+      return res.status(200).json(JSON.parse(cleaned))
+    }
+
+    // Visit Note — full output
     const userMessage = `EXISTING PROPERTY PROFILE:\n${profileContext}\n\n---\n\nTECHNICIAN VOICE DUMP TRANSCRIPT:\n${transcript}\n\n---\n\nGenerate structured notes in this exact JSON format. For profileUpdates, only include fields where the transcript contains new information not already in the existing profile — set fields to null if nothing new was said. Do not add markdown or any text outside the JSON.\n\n{\n  "invoice": "3-5 sentence plain-English note for the customer",\n  "tech": "bullet-point tech notes using industry terminology",\n  "pestLog": "3-5 sentence dated pest log entry",\n  "profileUpdates": ${profileShape}\n}`
 
     const raw = await callClaude(apiKey, {
