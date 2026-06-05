@@ -11,16 +11,17 @@ export const config = {
   },
 }
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY,
-})
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+
+  const apiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY
+  if (!apiKey) {
+    return res.status(500).json({ error: 'OPENAI_API_KEY is not set in Vercel environment variables' })
+  }
 
   let tmpFile = null
 
@@ -29,10 +30,11 @@ export default async function handler(req, res) {
 
     if (!audio) return res.status(400).json({ error: 'No audio provided' })
 
+    const openai = new OpenAI({ apiKey })
+
     const buffer = Buffer.from(audio, 'base64')
     const ext = mimeType?.includes('mp4') ? 'm4a' : mimeType?.includes('ogg') ? 'ogg' : 'webm'
 
-    // Write to a temp file so the OpenAI SDK gets a proper ReadStream with a filename
     tmpFile = join(tmpdir(), `fn-audio-${Date.now()}.${ext}`)
     writeFileSync(tmpFile, buffer)
 

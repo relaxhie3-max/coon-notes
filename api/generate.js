@@ -1,8 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY,
-})
 
 const SYSTEM_PROMPT = `You are organizing field notes for a professional pest control technician in Houston, Texas. The technician has done a free-form voice dump after a service stop. Extract and structure the information into the required sections. Use plain English for the invoice note. Use pest control industry terminology for tech notes. Be concise and specific. Do not invent details not present in the transcript. For profile updates, only surface genuinely new information not already captured in the existing profile.`
 
@@ -78,6 +75,13 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+
+  const apiKey = process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY
+  if (!apiKey) {
+    return res.status(500).json({ error: 'ANTHROPIC_API_KEY is not set in Vercel environment variables' })
+  }
+
+  const anthropic = new Anthropic({ apiKey })
 
   try {
     const { mode, transcript, profile, existing, newEntry } = req.body
