@@ -190,6 +190,15 @@ export default function RecordScreen({ navigate, property }) {
                   ? 'Tap to stop'
                   : 'Tap to start recording your field notes'}
               </p>
+              {!isRecording && (
+                <button
+                  className="btn btn-ghost btn-sm"
+                  style={{ marginTop: 4 }}
+                  onClick={() => setPhase('transcribed')}
+                >
+                  ✏️ Type instead
+                </button>
+              )}
             </>
           )}
 
