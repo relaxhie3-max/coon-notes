@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRecording } from '../context/RecordingContext'
 
 function formatTime(s) {
@@ -27,8 +27,15 @@ export default function RecordScreen({ navigate, property, mode = 'visit' }) {
   const {
     phase, timer, transcript, error, micDenied,
     setTranscript, setPhase, setError,
-    startRecording, stopRecording, enterTypingMode,
+    startRecording, stopRecording, enterTypingMode, reset,
   } = useRecording()
+
+  useEffect(() => {
+    // Reset to idle on fresh arrival unless a recording is actively in progress
+    if (phase !== 'recording' && phase !== 'stopped' && phase !== 'transcribing') {
+      reset()
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const isRecording = phase === 'recording'
   const isLoading = phase === 'stopped' || phase === 'transcribing' || phase === 'generating'
