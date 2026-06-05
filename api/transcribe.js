@@ -1,5 +1,15 @@
 import OpenAI, { toFile } from 'openai'
 
+// Raise Vercel's body size limit from the default 1 MB to 25 MB
+// to accommodate base64-encoded audio (a 10-min recording ≈ 10–15 MB base64)
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '25mb',
+    },
+  },
+}
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY,
 })
