@@ -47,8 +47,6 @@ export default function RecordScreen({ navigate, property, mode = 'visit' }) {
     }
     // navigate away to show generating state on results screen
     // but first call the API here
-    const { setPhase } = require('../context/RecordingContext') // not available this way
-    // We'll manage generating state locally
     setError('')
     setPhase('generating')
     try {
