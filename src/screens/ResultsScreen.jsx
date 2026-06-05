@@ -139,7 +139,7 @@ export default function ResultsScreen({ navigate, property, transcript, notes })
 
       // 3. Rewrite pest_running_summary if we have a new pest log entry
       if (notes.pestLog) {
-        const summaryRes = await fetch('/api/generate', {
+        const summaryRes = await fetch('/api/notes', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

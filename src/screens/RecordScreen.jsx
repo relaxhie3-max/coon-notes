@@ -89,7 +89,7 @@ export default function RecordScreen({ navigate, property }) {
     setPhase('transcribing')
     try {
       const base64 = await blobToBase64(blob)
-      const res = await fetch('/api/transcribe', {
+      const res = await fetch('/api/whisper', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ audio: base64, mimeType }),
@@ -116,7 +116,7 @@ export default function RecordScreen({ navigate, property }) {
     setPhase('generating')
     setError('')
     try {
-      const res = await fetch('/api/generate', {
+      const res = await fetch('/api/notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transcript: transcript.trim(), profile: property }),
