@@ -1,4 +1,4 @@
-const CACHE = 'field-notes-v1'
+const CACHE = 'field-notes-v3'
 
 self.addEventListener('install', e => {
   self.skipWaiting()
