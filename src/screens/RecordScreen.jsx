@@ -128,12 +128,6 @@ export default function RecordScreen({ navigate, property, mode = 'visit' }) {
             </div>
           )}
 
-          {phase === 'generating' && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-              <div className="spinner spinner-dark" style={{ width: 40, height: 40, borderWidth: 4 }} />
-              <p className="record-hint">Generating notes with AI…</p>
-            </div>
-          )}
         </div>
 
         {micDenied && (
@@ -144,7 +138,7 @@ export default function RecordScreen({ navigate, property, mode = 'visit' }) {
           </div>
         )}
 
-        {(phase === 'transcribed' || micDenied) && (
+        {(phase === 'transcribed' || phase === 'generating' || micDenied) && (
           <div className="pad gap">
             {error && <div className="error-box">{error}</div>}
 
@@ -153,12 +147,12 @@ export default function RecordScreen({ navigate, property, mode = 'visit' }) {
                 <label className="label" htmlFor="transcript" style={{ margin: 0 }}>
                   {transcriptLabel}
                 </label>
-                {transcript && <CopyButton text={transcript} />}
+                {transcript && phase !== 'generating' && <CopyButton text={transcript} />}
               </div>
               <textarea
                 id="transcript"
                 className="textarea"
-                style={{ minHeight: 200, fontSize: 15 }}
+                style={{ minHeight: 200, fontSize: 15, opacity: phase === 'generating' ? 0.5 : 1 }}
                 placeholder={
                   mode === 'quick_log'
                     ? 'Paste a call transcript or type a quick note…'
@@ -166,28 +160,32 @@ export default function RecordScreen({ navigate, property, mode = 'visit' }) {
                 }
                 value={transcript}
                 onChange={e => setTranscript(e.target.value)}
+                disabled={phase === 'generating'}
               />
             </div>
 
             <button
               className="btn btn-primary btn-full"
               onClick={handleGenerateNotes}
-              disabled={!transcript.trim()}
+              disabled={!transcript.trim() || phase === 'generating'}
             >
-              ✨ Generate Notes
+              {phase === 'generating'
+                ? <><span className="spinner" /> Generating notes…</>
+                : '✨ Generate Notes'}
             </button>
 
-            <button
-              className="btn btn-ghost btn-full"
-              onClick={() => {
-                setTranscript('')
-                setError('')
-                enterTypingMode(null, mode)
-                navigate('record', { property, mode })
-              }}
-            >
-              Start over
-            </button>
+            {phase !== 'generating' && (
+              <button
+                className="btn btn-ghost btn-full"
+                onClick={() => {
+                  setTranscript('')
+                  setError('')
+                  reset()
+                }}
+              >
+                Start over
+              </button>
+            )}
           </div>
         )}
 
