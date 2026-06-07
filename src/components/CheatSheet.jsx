@@ -150,7 +150,8 @@ function FieldRow({ label, value }) {
   )
 }
 
-export default function CheatSheet({ property }) {
+export default function CheatSheet({ property, mode = 'visit' }) {
+  const isQuickLog = mode === 'quick_log'
   return (
     <div style={{ padding: '0 16px 24px' }}>
 
@@ -180,7 +181,7 @@ export default function CheatSheet({ property }) {
         background: '#1e293b',
         borderRadius: 12,
         overflow: 'hidden',
-        marginBottom: 12,
+        marginBottom: isQuickLog ? 0 : 12,
       }}>
         <div style={{
           padding: '10px 14px',
@@ -191,7 +192,7 @@ export default function CheatSheet({ property }) {
           color: '#94a3b8',
           textTransform: 'uppercase',
         }}>
-          Profile — say anything new out loud
+          {isQuickLog ? 'Profile gaps — mention anything you know' : 'Profile — say anything new out loud'}
         </div>
 
         {PROFILE_GROUPS.map(group => {
@@ -220,8 +221,8 @@ export default function CheatSheet({ property }) {
         })}
       </div>
 
-      {/* Zone 2 — Visit prompts */}
-      <div style={{
+      {/* Zone 2 — Visit prompts (visit notes only) */}
+      {!isQuickLog && <div style={{
         background: '#1e293b',
         borderRadius: 12,
         overflow: 'hidden',
@@ -261,7 +262,7 @@ export default function CheatSheet({ property }) {
             ))}
           </div>
         ))}
-      </div>
+      </div>}
 
     </div>
   )

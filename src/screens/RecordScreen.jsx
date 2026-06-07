@@ -130,7 +130,7 @@ export default function RecordScreen({ navigate, property, mode = 'visit' }) {
         </div>
 
         {/* Cheat sheet — visible while recording */}
-        {isRecording && <CheatSheet property={property} />}
+        {isRecording && <CheatSheet property={property} mode={mode} />}
 
         {micDenied && (
           <div className="pad">
