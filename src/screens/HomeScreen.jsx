@@ -121,10 +121,8 @@ export default function HomeScreen({ navigate }) {
                 <div className="property-item-info">
                   <div className="property-item-name">{prop.client_name || 'Unnamed'}</div>
                   <div className="property-item-address">{prop.address || 'No address'}</div>
-                </div>
-                <div className="property-item-meta">
                   {prop.service_type && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
                       {prop.service_type.split(',').map(s => s.trim()).filter(Boolean).map(tag => (
                         <span
                           key={tag}
@@ -139,6 +137,8 @@ export default function HomeScreen({ navigate }) {
                       ))}
                     </div>
                   )}
+                </div>
+                <div className="property-item-meta">
                   <span className="text-sm text-muted">
                     {prop.visitCount} visit{prop.visitCount !== 1 ? 's' : ''}
                   </span>
