@@ -47,12 +47,12 @@ export default function HomeScreen({ navigate }) {
   })
 
   const serviceColors = {
-    'General pest': '#2563eb',
-    'Termite': '#7c3aed',
-    'Mosquito': '#059669',
-    'Rodent': '#d97706',
-    'Wildlife': '#dc2626',
-    'Multi-service': '#0891b2',
+    'General Pest': '#2563eb', 'Termite': '#7c3aed', 'Mosquito': '#059669',
+    'Rodent': '#d97706', 'Wildlife': '#dc2626',
+    'Monthly': '#0891b2', 'Bi-Monthly': '#0891b2', 'Quarterly': '#0891b2', 'One-Time': '#64748b',
+    'Core': '#374151', 'Premium': '#7c3aed', 'Legendary': '#b45309',
+    // legacy
+    'General pest': '#2563eb', 'Multi-service': '#0891b2',
   }
 
   return (
@@ -124,15 +124,20 @@ export default function HomeScreen({ navigate }) {
                 </div>
                 <div className="property-item-meta">
                   {prop.service_type && (
-                    <span
-                      className="badge"
-                      style={{
-                        background: (serviceColors[prop.service_type] || '#64748b') + '18',
-                        color: serviceColors[prop.service_type] || '#64748b',
-                      }}
-                    >
-                      {prop.service_type}
-                    </span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end' }}>
+                      {prop.service_type.split(',').map(s => s.trim()).filter(Boolean).map(tag => (
+                        <span
+                          key={tag}
+                          className="badge"
+                          style={{
+                            background: (serviceColors[tag] || '#64748b') + '18',
+                            color: serviceColors[tag] || '#64748b',
+                          }}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
                   )}
                   <span className="text-sm text-muted">
                     {prop.visitCount} visit{prop.visitCount !== 1 ? 's' : ''}

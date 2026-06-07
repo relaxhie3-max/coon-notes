@@ -1,14 +1,9 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-
-const SERVICE_TYPES = ['General pest', 'Termite', 'Mosquito', 'Rodent', 'Wildlife', 'Multi-service']
+import ServiceTypePicker from '../components/ServiceTypePicker'
 
 export default function AddPropertyScreen({ navigate }) {
-  const [form, setForm] = useState({
-    client_name: '',
-    address: '',
-    service_type: 'General pest',
-  })
+  const [form, setForm] = useState({ client_name: '', address: '', service_type: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -26,7 +21,7 @@ export default function AddPropertyScreen({ navigate }) {
         .insert({
           client_name: form.client_name.trim(),
           address: form.address.trim(),
-          service_type: form.service_type,
+          service_type: form.service_type || null,
         })
         .select()
         .single()
@@ -42,9 +37,7 @@ export default function AddPropertyScreen({ navigate }) {
   return (
     <div className="screen">
       <div className="header">
-        <button className="btn btn-icon" onClick={() => navigate('home')}>
-          ←
-        </button>
+        <button className="btn btn-icon" onClick={() => navigate('home')}>←</button>
         <h1>New Property</h1>
       </div>
 
@@ -79,17 +72,11 @@ export default function AddPropertyScreen({ navigate }) {
           </div>
 
           <div className="form-group">
-            <label className="label" htmlFor="service_type">Service Type</label>
-            <select
-              id="service_type"
-              className="select"
+            <label className="label">Service Type & Plan</label>
+            <ServiceTypePicker
               value={form.service_type}
-              onChange={e => set('service_type', e.target.value)}
-            >
-              {SERVICE_TYPES.map(t => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
+              onChange={v => set('service_type', v)}
+            />
           </div>
 
           <button

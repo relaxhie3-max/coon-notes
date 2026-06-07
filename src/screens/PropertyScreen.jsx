@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import ServiceTypePicker from '../components/ServiceTypePicker'
 
 /* ─── Field definitions ─────────────────────────────────────── */
 
@@ -143,6 +144,12 @@ export default function PropertyScreen({ navigate, property: initialProperty }) 
   const [alertError, setAlertError] = useState('')
   const [alertSuccess, setAlertSuccess] = useState(false)
 
+  // Property edit state
+  const [editingProp, setEditingProp] = useState(false)
+  const [editDraft, setEditDraft] = useState({ client_name: '', address: '', service_type: '' })
+  const [savingProp, setSavingProp] = useState(false)
+  const [propEditError, setPropEditError] = useState('')
+
   // Initialize alert drafts from current property values
   useEffect(() => {
     const drafts = {}
@@ -199,6 +206,35 @@ export default function PropertyScreen({ navigate, property: initialProperty }) 
       .update({ [key]: value || null })
       .eq('id', prop.id)
     if (!err) setProp(p => ({ ...p, [key]: value || null }))
+  }
+
+  const openPropEdit = () => {
+    setEditDraft({ client_name: prop.client_name || '', address: prop.address || '', service_type: prop.service_type || '' })
+    setPropEditError('')
+    setEditingProp(true)
+  }
+
+  const savePropEdit = async () => {
+    if (!editDraft.client_name.trim()) return setPropEditError('Client name is required.')
+    if (!editDraft.address.trim()) return setPropEditError('Address is required.')
+    setSavingProp(true)
+    setPropEditError('')
+    try {
+      const { error: err } = await supabase
+        .from('properties')
+        .update({
+          client_name: editDraft.client_name.trim(),
+          address: editDraft.address.trim(),
+          service_type: editDraft.service_type || null,
+        })
+        .eq('id', prop.id)
+      if (err) throw err
+      setProp(p => ({ ...p, ...editDraft }))
+      setEditingProp(false)
+    } catch (err) {
+      setPropEditError(err.message || 'Save failed.')
+    }
+    setSavingProp(false)
   }
 
   const formatDate = (str) => {
@@ -383,9 +419,7 @@ export default function PropertyScreen({ navigate, property: initialProperty }) 
   return (
     <div className="screen">
       <div className="header">
-        <button className="btn btn-icon" onClick={() => navigate('home')}>
-          ←
-        </button>
+        <button className="btn btn-icon" onClick={() => navigate('home')}>←</button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h1 style={{ fontSize: 16, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {prop.client_name}
@@ -394,7 +428,63 @@ export default function PropertyScreen({ navigate, property: initialProperty }) 
             {prop.address}
           </div>
         </div>
+        <button
+          className="btn btn-icon"
+          onClick={editingProp ? () => setEditingProp(false) : openPropEdit}
+          title="Edit property"
+        >
+          {editingProp ? '✕' : '✏️'}
+        </button>
       </div>
+
+      {/* Inline property editor */}
+      {editingProp && (
+        <div style={{
+          background: '#f8fafc', borderBottom: '1px solid var(--border)',
+          padding: 16, display: 'flex', flexDirection: 'column', gap: 12,
+          flexShrink: 0,
+        }}>
+          {propEditError && <div className="error-box">{propEditError}</div>}
+
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="label">Client Name</label>
+            <input
+              className="input"
+              type="text"
+              value={editDraft.client_name}
+              onChange={e => setEditDraft(d => ({ ...d, client_name: e.target.value }))}
+              autoCapitalize="words"
+            />
+          </div>
+
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="label">Address</label>
+            <input
+              className="input"
+              type="text"
+              value={editDraft.address}
+              onChange={e => setEditDraft(d => ({ ...d, address: e.target.value }))}
+              autoCapitalize="words"
+            />
+          </div>
+
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="label">Service Type & Plan</label>
+            <ServiceTypePicker
+              value={editDraft.service_type}
+              onChange={v => setEditDraft(d => ({ ...d, service_type: v }))}
+            />
+          </div>
+
+          <button
+            className="btn btn-primary btn-full"
+            onClick={savePropEdit}
+            disabled={savingProp}
+          >
+            {savingProp ? <><span className="spinner" /> Saving…</> : 'Save Changes'}
+          </button>
+        </div>
+      )}
 
       <div className="tabs">
         {[
