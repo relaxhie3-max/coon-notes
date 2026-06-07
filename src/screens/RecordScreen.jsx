@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useRecording } from '../context/RecordingContext'
 import CheatSheet from '../components/CheatSheet'
+import { loadSettings } from '../lib/settings'
 
 function formatTime(s) {
   const m = Math.floor(s / 60).toString().padStart(2, '0')
@@ -51,10 +52,11 @@ export default function RecordScreen({ navigate, property, mode = 'visit' }) {
     setError('')
     setPhase('generating')
     try {
+      const settings = await loadSettings()
       const res = await fetch('/api/notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript: transcript.trim(), profile: property, mode }),
+        body: JSON.stringify({ transcript: transcript.trim(), profile: property, mode, settings }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))

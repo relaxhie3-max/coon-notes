@@ -66,6 +66,14 @@ export default function HomeScreen({ navigate }) {
           <h1>Raccoon Notes</h1>
         </div>
         <button
+          className="btn btn-icon"
+          onClick={() => navigate('settings')}
+          title="Settings"
+          style={{ fontSize: 18 }}
+        >
+          ⚙️
+        </button>
+        <button
           className="btn btn-sm"
           style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: 'none' }}
           onClick={() => navigate('addProperty')}

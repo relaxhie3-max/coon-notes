@@ -1,5 +1,67 @@
 const SYSTEM_PROMPT = `You are organizing field notes for a professional pest control technician in Houston, Texas. The technician has done a free-form voice dump after a service stop. Extract and structure the information into the required sections. Use plain English for the invoice note. Use pest control industry terminology for tech notes. Be concise and specific. Do not invent details not present in the transcript. For profile updates, only surface genuinely new information not already captured in the existing profile.`
 
+// Map toggle keys to human-readable instructions for Claude
+const TOGGLE_INSTRUCTIONS = {
+  // Invoice
+  invoice_no_chemicals:     'INVOICE: Never mention chemical or product names in the invoice note.',
+  invoice_mention_followup: 'INVOICE: Always mention if a follow-up visit is recommended.',
+  invoice_no_activity:      'INVOICE: If no pest activity was observed during the visit, state this clearly in the invoice note.',
+  invoice_areas_treated:    'INVOICE: Mention what areas were treated, described in plain language.',
+  invoice_target_pest:      'INVOICE: Explicitly name the target pest(s) in the invoice note.',
+  invoice_customer_home:    'INVOICE: Acknowledge whether the customer was home during the visit.',
+  invoice_conducive:        'INVOICE: Mention any conducive conditions found, described in plain language.',
+  invoice_reentry:          'INVOICE: Include re-entry instructions if applicable.',
+  invoice_customer_name:    'INVOICE: Address the customer by their first name.',
+  invoice_concise:          'INVOICE: Keep the invoice note to 3 sentences maximum.',
+  // Tech notes
+  tech_bullets:         'TECH NOTES: Format as bullet points.',
+  tech_product_names:   'TECH NOTES: Include product names and formulations.',
+  tech_app_rates:       'TECH NOTES: Include application rates and dilutions.',
+  tech_app_method:      'TECH NOTES: Include the application method (spray, bait, dust, granule, etc.).',
+  tech_exact_locations: 'TECH NOTES: Specify exact locations treated.',
+  tech_pest_pressure:   'TECH NOTES: Rate pest pressure level (light / moderate / heavy).',
+  tech_conducive:       'TECH NOTES: Document all conducive conditions observed.',
+  tech_untreated:       'TECH NOTES: Note any areas that could not be treated and explain why.',
+  tech_structural:      'TECH NOTES: Flag any structural issues observed.',
+  tech_prior_outcome:   'TECH NOTES: Note if prior treatment outcomes are visible.',
+  // Pest log
+  log_severity:       'PEST LOG: Include a severity rating.',
+  log_trend:          'PEST LOG: Note if activity has increased or decreased compared to the last visit.',
+  log_conducive:      'PEST LOG: Document conducive conditions in the log entry.',
+  log_prior_outcome:  'PEST LOG: Reference prior treatment outcome if visible.',
+  // Profile
+  profile_flag_new:          'PROFILE UPDATES: Surface new information even if similar data already exists in the profile.',
+  profile_urgent_alerts:     'PROFILE UPDATES: Immediately flag any new allergy or safety information.',
+  profile_pet_changes:       'PROFILE UPDATES: Always note changes in pet status.',
+  profile_household_changes: 'PROFILE UPDATES: Note changes in household members or occupants.',
+  // General
+  general_heavy_followup: 'GENERAL: Always recommend a follow-up visit if heavy pest activity is noted.',
+  general_seasonal:       'GENERAL: Include relevant seasonal pest context when applicable.',
+  general_urgent_flag:    'GENERAL: Flag if property conditions require urgent attention.',
+  general_weather:        'GENERAL: Note weather conditions if relevant to pest activity.',
+}
+
+function buildSettingsInstructions(settings) {
+  if (!settings) return ''
+  const lines = []
+
+  if (settings.tech_name) lines.push(`Technician name: ${settings.tech_name}`)
+  if (settings.company_name) lines.push(`Company: ${settings.company_name}`)
+  if (settings.tone_instructions) lines.push(`Tone for invoice note: ${settings.tone_instructions}`)
+  if (settings.closing_line) lines.push(`INVOICE CLOSING LINE — append this verbatim to the end of every invoice note: "${settings.closing_line}"`)
+
+  const toggles = settings.toggles || {}
+  for (const [key, instruction] of Object.entries(TOGGLE_INSTRUCTIONS)) {
+    if (toggles[key]) lines.push(instruction)
+  }
+
+  if (settings.additional_instructions?.trim()) {
+    lines.push(`Additional instructions: ${settings.additional_instructions.trim()}`)
+  }
+
+  return lines.length > 0 ? `\n\nSTANDING INSTRUCTIONS:\n${lines.map(l => `- ${l}`).join('\n')}` : ''
+}
+
 const PROFILE_FIELDS = {
   alerts: ['alert_allergies', 'alert_pets', 'alert_reentry', 'alert_offlimits', 'alert_safety'],
   client: [
@@ -96,7 +158,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { mode, transcript, profile, existing, newEntry } = req.body
+    const { mode, transcript, profile, existing, newEntry, settings } = req.body
+    const settingsInstructions = buildSettingsInstructions(settings)
 
     if (mode === 'pest_summary') {
       const text = await callClaude(apiKey, {
@@ -116,7 +179,7 @@ export default async function handler(req, res) {
 
     // Quick Log — call or conversation, no visit/treatment occurred
     if (mode === 'quick_log') {
-      const userMessage = `EXISTING PROPERTY PROFILE:\n${profileContext}\n\n---\n\nUPDATE NOTE:\n${transcript}\n\n---\n\nThis is an informal update — not a service visit. It could be an observation, an office note, something a customer mentioned, or anything else worth logging. Extract only profile-relevant information. Return this exact JSON format with no markdown:\n\n{\n  "summary": "1-2 sentence plain description of what was noted",\n  "profileUpdates": ${profileShape}\n}\n\nFor profileUpdates, only include fields where genuinely new information was found. Set fields to null if nothing new was captured.`
+      const userMessage = `EXISTING PROPERTY PROFILE:\n${profileContext}${settingsInstructions}\n\n---\n\nUPDATE NOTE:\n${transcript}\n\n---\n\nThis is an informal update — not a service visit. It could be an observation, an office note, something a customer mentioned, or anything else worth logging. Extract only profile-relevant information. Return this exact JSON format with no markdown:\n\n{\n  "summary": "1-2 sentence plain description of what was noted",\n  "profileUpdates": ${profileShape}\n}\n\nFor profileUpdates, only include fields where genuinely new information was found. Set fields to null if nothing new was captured.`
 
       const raw = await callClaude(apiKey, {
         model: 'claude-sonnet-4-5',
@@ -129,7 +192,7 @@ export default async function handler(req, res) {
     }
 
     // Visit Note — full output
-    const userMessage = `EXISTING PROPERTY PROFILE:\n${profileContext}\n\n---\n\nTECHNICIAN VOICE DUMP TRANSCRIPT:\n${transcript}\n\n---\n\nGenerate structured notes in this exact JSON format. For profileUpdates, only include fields where the transcript contains new information not already in the existing profile — set fields to null if nothing new was said. Do not add markdown or any text outside the JSON.\n\n{\n  "invoice": "3-5 sentence plain-English note for the customer",\n  "tech": "bullet-point tech notes using industry terminology",\n  "pestLog": "3-5 sentence dated pest log entry",\n  "profileUpdates": ${profileShape}\n}`
+    const userMessage = `EXISTING PROPERTY PROFILE:\n${profileContext}${settingsInstructions}\n\n---\n\nTECHNICIAN VOICE DUMP TRANSCRIPT:\n${transcript}\n\n---\n\nGenerate structured notes in this exact JSON format. For profileUpdates, only include fields where the transcript contains new information not already in the existing profile — set fields to null if nothing new was said. Do not add markdown or any text outside the JSON.\n\n{\n  "invoice": "3-5 sentence plain-English note for the customer",\n  "tech": "bullet-point tech notes using industry terminology",\n  "pestLog": "3-5 sentence dated pest log entry",\n  "profileUpdates": ${profileShape}\n}`
 
     const raw = await callClaude(apiKey, {
       model: 'claude-sonnet-4-5',

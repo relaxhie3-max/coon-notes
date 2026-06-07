@@ -7,6 +7,7 @@ import PropertyScreen from './screens/PropertyScreen'
 import RecordScreen from './screens/RecordScreen'
 import ResultsScreen from './screens/ResultsScreen'
 import VisitDetailScreen from './screens/VisitDetailScreen'
+import SettingsScreen from './screens/SettingsScreen'
 
 function formatTime(s) {
   const m = Math.floor(s / 60).toString().padStart(2, '0')
@@ -86,6 +87,7 @@ function AppInner() {
       case 'record':      return <RecordScreen navigate={navigate} property={params.property} mode={params.mode || 'visit'} />
       case 'results':     return <ResultsScreen navigate={navigate} property={params.property} transcript={params.transcript} notes={params.notes} mode={params.mode || 'visit'} />
       case 'visitDetail': return <VisitDetailScreen navigate={navigate} property={params.property} visit={params.visit} />
+      case 'settings':    return <SettingsScreen navigate={navigate} />
       default:            return <HomeScreen navigate={navigate} />
     }
   }
