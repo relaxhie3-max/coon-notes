@@ -162,6 +162,23 @@ export default function PropertyScreen({ navigate, property: initialProperty }) 
   const [editDraft, setEditDraft] = useState({ client_name: '', address: '', service_type: '' })
   const [savingProp, setSavingProp] = useState(false)
   const [propEditError, setPropEditError] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    const { error: err } = await supabase
+      .from('properties')
+      .delete()
+      .eq('id', prop.id)
+    if (err) {
+      setPropEditError(err.message || 'Delete failed.')
+      setDeleting(false)
+      setConfirmDelete(false)
+    } else {
+      navigate('home')
+    }
+  }
 
   // Initialize alert drafts from current property values
   useEffect(() => {
@@ -492,10 +509,47 @@ export default function PropertyScreen({ navigate, property: initialProperty }) 
           <button
             className="btn btn-primary btn-full"
             onClick={savePropEdit}
-            disabled={savingProp}
+            disabled={savingProp || deleting}
           >
             {savingProp ? <><span className="spinner" /> Saving…</> : 'Save Changes'}
           </button>
+
+          {!confirmDelete ? (
+            <button
+              className="btn btn-ghost btn-full"
+              style={{ color: 'var(--danger)', borderColor: 'var(--danger-100)' }}
+              onClick={() => setConfirmDelete(true)}
+              disabled={savingProp || deleting}
+            >
+              Delete Property
+            </button>
+          ) : (
+            <div style={{
+              background: 'var(--danger-100)', border: '1.5px solid var(--danger)',
+              borderRadius: 'var(--radius-sm)', padding: '12px 14px',
+              display: 'flex', flexDirection: 'column', gap: 10,
+            }}>
+              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--danger)', textAlign: 'center' }}>
+                Delete {prop.client_name}? This cannot be undone.
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  className="btn btn-ghost btn-full"
+                  onClick={() => setConfirmDelete(false)}
+                  disabled={deleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-danger btn-full"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                >
+                  {deleting ? <><span className="spinner" /> Deleting…</> : 'Yes, Delete'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
