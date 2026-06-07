@@ -17,7 +17,8 @@ export default function HomeScreen({ navigate }) {
     try {
       const { data: props, error: propErr } = await supabase
         .from('properties')
-        .select('*')
+        .select('*, followup_flag, followup_note')
+        .order('followup_flag', { ascending: false, nullsFirst: false })
         .order('client_name')
 
       if (propErr) throw propErr
@@ -122,7 +123,15 @@ export default function HomeScreen({ navigate }) {
                 onClick={() => navigate('property', { property: prop })}
               >
                 <div className="property-item-info">
-                  <div className="property-item-name">{prop.client_name || 'Unnamed'}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div className="property-item-name">{prop.client_name || 'Unnamed'}</div>
+                    {prop.followup_flag && (
+                      <span style={{
+                        width: 8, height: 8, borderRadius: '50%',
+                        background: '#f59e0b', flexShrink: 0, marginTop: 1,
+                      }} title="Follow-up needed" />
+                    )}
+                  </div>
                   <div className="property-item-address">{prop.address || 'No address'}</div>
                   {prop.service_type && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>

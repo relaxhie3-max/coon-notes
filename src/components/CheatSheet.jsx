@@ -154,6 +154,27 @@ export default function CheatSheet({ property }) {
   return (
     <div style={{ padding: '0 16px 24px' }}>
 
+      {/* Follow-up reminder — pinned at top */}
+      {property.followup_flag && (
+        <div style={{
+          background: '#f59e0b',
+          borderRadius: 10,
+          padding: '12px 14px',
+          marginBottom: 12,
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 10,
+        }}>
+          <span style={{ fontSize: 18, flexShrink: 0 }}>🚩</span>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: '#451a03' }}>Follow-up flagged</div>
+            {property.followup_note && (
+              <div style={{ fontSize: 13, color: '#451a03', marginTop: 3 }}>{property.followup_note}</div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Zone 1 — Profile */}
       <div style={{
         background: '#1e293b',

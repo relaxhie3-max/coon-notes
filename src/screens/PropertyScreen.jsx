@@ -144,6 +144,19 @@ export default function PropertyScreen({ navigate, property: initialProperty }) 
   const [alertError, setAlertError] = useState('')
   const [alertSuccess, setAlertSuccess] = useState(false)
 
+  // Follow-up flag
+  const [clearingFlag, setClearingFlag] = useState(false)
+
+  const clearFollowupFlag = async () => {
+    setClearingFlag(true)
+    const { error: err } = await supabase
+      .from('properties')
+      .update({ followup_flag: false, followup_note: null, followup_flagged_at: null })
+      .eq('id', prop.id)
+    if (!err) setProp(p => ({ ...p, followup_flag: false, followup_note: null }))
+    setClearingFlag(false)
+  }
+
   // Property edit state
   const [editingProp, setEditingProp] = useState(false)
   const [editDraft, setEditDraft] = useState({ client_name: '', address: '', service_type: '' })
@@ -482,6 +495,35 @@ export default function PropertyScreen({ navigate, property: initialProperty }) 
             disabled={savingProp}
           >
             {savingProp ? <><span className="spinner" /> Saving…</> : 'Save Changes'}
+          </button>
+        </div>
+      )}
+
+      {/* Follow-up flag banner */}
+      {prop.followup_flag && (
+        <div style={{
+          background: '#fef3c7',
+          borderBottom: '1.5px solid #f59e0b',
+          padding: '10px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          flexShrink: 0,
+        }}>
+          <span style={{ fontSize: 18, flexShrink: 0 }}>🚩</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>Follow-up needed</div>
+            {prop.followup_note && (
+              <div style={{ fontSize: 13, color: '#78350f', marginTop: 2 }}>{prop.followup_note}</div>
+            )}
+          </div>
+          <button
+            className="btn btn-sm"
+            style={{ background: '#f59e0b', color: 'white', border: 'none', flexShrink: 0 }}
+            onClick={clearFollowupFlag}
+            disabled={clearingFlag}
+          >
+            {clearingFlag ? '…' : '✓ Done'}
           </button>
         </div>
       )}

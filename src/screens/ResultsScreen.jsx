@@ -107,6 +107,8 @@ function appendField(existing, newVal, dateStr) {
 export default function ResultsScreen({ navigate, property, transcript, notes, mode = 'visit' }) {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [flagFollowup, setFlagFollowup] = useState(false)
+  const [followupNote, setFollowupNote] = useState('')
   const isQuickLog = mode === 'quick_log'
 
   const dateStr = new Date().toLocaleDateString('en-US', {
@@ -161,7 +163,14 @@ export default function ResultsScreen({ navigate, property, transcript, notes, m
         }
       }
 
-      // 4. Apply updates to property
+      // 4. Apply follow-up flag if set
+      if (flagFollowup) {
+        updates.followup_flag = true
+        updates.followup_note = followupNote.trim() || null
+        updates.followup_flagged_at = new Date().toISOString()
+      }
+
+      // 5. Apply all property updates
       if (Object.keys(updates).length > 0) {
         const { error: propErr } = await supabase
           .from('properties').update(updates).eq('id', property.id)
@@ -232,6 +241,46 @@ export default function ResultsScreen({ navigate, property, transcript, notes, m
             <div className="result-section-body">
               <ProfileUpdatePreview updates={notes?.profileUpdates} />
             </div>
+          </div>
+
+          {/* Follow-up flag */}
+          <div style={{
+            background: flagFollowup ? '#fffbeb' : 'var(--surface)',
+            border: `1.5px solid ${flagFollowup ? '#f59e0b' : 'var(--border)'}`,
+            borderRadius: 'var(--radius)',
+            overflow: 'hidden',
+            transition: 'all 0.2s',
+          }}>
+            <button
+              onClick={() => setFlagFollowup(f => !f)}
+              style={{
+                width: '100%', padding: '14px 16px', border: 'none', background: 'none',
+                display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: 22 }}>{flagFollowup ? '🚩' : '🏳️'}</span>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: flagFollowup ? '#92400e' : 'var(--text)' }}>
+                  {flagFollowup ? 'Follow-up flagged' : 'Flag for follow-up'}
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                  {flagFollowup ? 'Will show on property until cleared' : 'Tap to mark this property for follow-up'}
+                </div>
+              </div>
+            </button>
+            {flagFollowup && (
+              <div style={{ padding: '0 16px 16px' }}>
+                <textarea
+                  className="textarea"
+                  style={{ minHeight: 72, background: '#fffbeb', borderColor: '#f59e0b' }}
+                  placeholder="What needs to happen? (optional)"
+                  value={followupNote}
+                  onChange={e => setFollowupNote(e.target.value)}
+                  autoFocus
+                />
+              </div>
+            )}
           </div>
 
           {saveError && <div className="error-box">{saveError}</div>}
