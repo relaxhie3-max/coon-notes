@@ -116,7 +116,7 @@ export default async function handler(req, res) {
 
     // Quick Log — call or conversation, no visit/treatment occurred
     if (mode === 'quick_log') {
-      const userMessage = `EXISTING PROPERTY PROFILE:\n${profileContext}\n\n---\n\nNOTE / CALL TRANSCRIPT:\n${transcript}\n\n---\n\nThis is a quick log entry from a phone call, conversation, or casual observation — no service visit occurred. Extract only profile-relevant information. Return this exact JSON format with no markdown:\n\n{\n  "summary": "1-2 sentence plain description of what was discussed or noted",\n  "profileUpdates": ${profileShape}\n}\n\nFor profileUpdates, only include fields where genuinely new information was found. Set fields to null if nothing new was said.`
+      const userMessage = `EXISTING PROPERTY PROFILE:\n${profileContext}\n\n---\n\nUPDATE NOTE:\n${transcript}\n\n---\n\nThis is an informal update — not a service visit. It could be an observation, an office note, something a customer mentioned, or anything else worth logging. Extract only profile-relevant information. Return this exact JSON format with no markdown:\n\n{\n  "summary": "1-2 sentence plain description of what was noted",\n  "profileUpdates": ${profileShape}\n}\n\nFor profileUpdates, only include fields where genuinely new information was found. Set fields to null if nothing new was captured.`
 
       const raw = await callClaude(apiKey, {
         model: 'claude-sonnet-4-5',

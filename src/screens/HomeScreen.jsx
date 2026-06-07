@@ -24,11 +24,14 @@ export default function HomeScreen({ navigate }) {
 
       const { data: visits } = await supabase
         .from('visits')
-        .select('property_id')
+        .select('property_id, mode')
 
       const countMap = {}
       ;(visits || []).forEach(v => {
-        countMap[v.property_id] = (countMap[v.property_id] || 0) + 1
+        // Quick logs are not service visits — don't count them
+        if (v.mode !== 'quick_log') {
+          countMap[v.property_id] = (countMap[v.property_id] || 0) + 1
+        }
       })
 
       setProperties((props || []).map(p => ({ ...p, visitCount: countMap[p.id] || 0 })))

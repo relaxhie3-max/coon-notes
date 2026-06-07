@@ -73,7 +73,7 @@ export default function RecordScreen({ navigate, property, mode = 'visit' }) {
 
   const modeLabel = mode === 'quick_log' ? 'Quick Log' : 'New Visit Note'
   const transcriptLabel = mode === 'quick_log'
-    ? 'Type a note or paste a call transcript'
+    ? 'What do you want to log?'
     : 'Transcript — review and edit before generating'
 
   return (
@@ -157,7 +157,7 @@ export default function RecordScreen({ navigate, property, mode = 'visit' }) {
                 style={{ minHeight: 200, fontSize: 15, opacity: phase === 'generating' ? 0.5 : 1 }}
                 placeholder={
                   mode === 'quick_log'
-                    ? 'Paste a call transcript or type a quick note…'
+                    ? 'Type anything worth noting — observation, customer mention, office note…'
                     : 'Speak during recording, or type your field notes here…'
                 }
                 value={transcript}
