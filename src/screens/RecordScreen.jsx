@@ -29,7 +29,7 @@ export default function RecordScreen({ navigate, property, mode = 'visit' }) {
   const {
     phase, timer, transcript, error, micDenied,
     setTranscript, setPhase, setError,
-    startRecording, stopRecording, enterTypingMode, reset,
+    startRecording, stopRecording, startAppendRecording, enterTypingMode, reset,
   } = useRecording()
 
   useEffect(() => {
@@ -167,6 +167,15 @@ export default function RecordScreen({ navigate, property, mode = 'visit' }) {
                 disabled={phase === 'generating'}
               />
             </div>
+
+            <button
+              className="btn btn-ghost btn-full"
+              style={{ borderColor: '#dc2626', color: '#dc2626' }}
+              onClick={startAppendRecording}
+              disabled={phase === 'generating'}
+            >
+              🎙 Add more
+            </button>
 
             <button
               className="btn btn-primary btn-full"

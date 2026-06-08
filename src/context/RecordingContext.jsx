@@ -27,6 +27,8 @@ export function RecordingProvider({ children }) {
   const chunksRef = useRef([])
   const timerRef = useRef(null)
   const mimeTypeRef = useRef('audio/webm')
+  const appendRef = useRef(false)      // true when adding to an existing transcript
+  const prevTranscriptRef = useRef('') // holds transcript before append recording starts
 
   useEffect(() => {
     if (phase === 'recording') {
@@ -107,14 +109,56 @@ export function RecordingProvider({ children }) {
         throw new Error(data.error || `Server error ${res.status}`)
       }
       const data = await res.json()
-      setTranscript(data.transcript || '')
+      const newText = data.transcript || ''
+      if (appendRef.current && prevTranscriptRef.current) {
+        setTranscript(prevTranscriptRef.current + '\n\n' + newText)
+      } else {
+        setTranscript(newText)
+      }
+      appendRef.current = false
       setPhase('transcribed')
     } catch (err) {
       setError(`Transcription failed: ${err.message}. You can type your notes below instead.`)
-      setTranscript('')
+      if (!appendRef.current) setTranscript('')
+      appendRef.current = false
       setPhase('transcribed')
     } finally {
       if (storagePath) supabase.storage.from('audio').remove([storagePath]).catch(() => {})
+    }
+  }
+
+  const startAppendRecording = async () => {
+    // Save what's already in the transcript, then start a fresh recording
+    prevTranscriptRef.current = transcript
+    appendRef.current = true
+    setError('')
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mimeType = getSupportedMimeType()
+      mimeTypeRef.current = mimeType
+      const recorder = new MediaRecorder(stream, { mimeType })
+      chunksRef.current = []
+
+      recorder.ondataavailable = e => {
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data)
+      }
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop())
+        const blob = new Blob(chunksRef.current, { type: mimeType })
+        await transcribeBlob(blob, mimeType)
+      }
+
+      recorder.start(250)
+      mediaRecorderRef.current = recorder
+      setTimer(0)
+      setPhase('recording')
+    } catch (err) {
+      appendRef.current = false
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setMicDenied(true)
+      } else {
+        setError(`Could not access microphone: ${err.message}`)
+      }
     }
   }
 
@@ -142,7 +186,7 @@ export function RecordingProvider({ children }) {
       phase, timer, transcript, error, micDenied,
       activeProperty, activeMode,
       setTranscript, setPhase, setError,
-      startRecording, stopRecording, enterTypingMode, reset,
+      startRecording, stopRecording, startAppendRecording, enterTypingMode, reset,
     }}>
       {children}
     </RecordingContext.Provider>
