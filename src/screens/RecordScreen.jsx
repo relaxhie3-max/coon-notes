@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useRecording } from '../context/RecordingContext'
 import CheatSheet from '../components/CheatSheet'
 import { loadSettings } from '../lib/settings'
+import { supabase } from '../lib/supabase'
 
 function formatTime(s) {
   const m = Math.floor(s / 60).toString().padStart(2, '0')
@@ -25,7 +26,7 @@ function CopyButton({ text }) {
   )
 }
 
-export default function RecordScreen({ navigate, property, mode = 'visit' }) {
+export default function RecordScreen({ navigate, property, mode = 'visit', selectedServices = [], tier = '', visitType = 'recurring' }) {
   const {
     phase, timer, transcript, error, micDenied,
     setTranscript, setPhase, setError,
@@ -38,6 +39,58 @@ export default function RecordScreen({ navigate, property, mode = 'visit' }) {
       reset()
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── SOP check ───────────────────────────────────────────────
+  const [sopFlags, setSopFlags] = useState([])   // [{sopName, flags: []}]
+  const [sopChecking, setSopChecking] = useState(false)
+  const [sopDismissed, setSopDismissed] = useState(false)
+
+  useEffect(() => {
+    if (phase === 'transcribed' && selectedServices.length > 0 && transcript.trim()) {
+      runSopCheck()
+    }
+    if (phase === 'recording') {
+      setSopFlags([])
+      setSopDismissed(false)
+    }
+  }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function runSopCheck() {
+    setSopChecking(true)
+    setSopFlags([])
+    setSopDismissed(false)
+    try {
+      const { data: sops } = await supabase
+        .from('sops')
+        .select('*')
+        .in('service_type', selectedServices)
+        .eq('visit_type', visitType)
+
+      const matchingSops = (sops || []).filter(sop =>
+        !sop.tier || !tier || sop.tier === tier
+      )
+
+      if (!matchingSops.length) { setSopChecking(false); return }
+
+      const results = await Promise.all(
+        matchingSops.map(async (sop) => {
+          try {
+            const res = await fetch('/api/notes', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ mode: 'sop_check', transcript, checklist: sop.checklist }),
+            })
+            if (!res.ok) return null
+            const data = await res.json()
+            return data.flags?.length ? { sopName: sop.name, flags: data.flags } : null
+          } catch { return null }
+        })
+      )
+      setSopFlags(results.filter(Boolean))
+    } catch { /* silent — SOP check is non-blocking */ }
+    setSopChecking(false)
+  }
+  // ────────────────────────────────────────────────────────────
 
   const isRecording = phase === 'recording'
   const isLoading = phase === 'stopped' || phase === 'transcribing' || phase === 'generating'
@@ -145,6 +198,58 @@ export default function RecordScreen({ navigate, property, mode = 'visit' }) {
         {(phase === 'transcribed' || phase === 'generating' || micDenied) && (
           <div className="pad gap">
             {error && <div className="error-box">{error}</div>}
+
+            {/* SOP flags — shown only while editing transcript (not during generation) */}
+            {phase === 'transcribed' && selectedServices.length > 0 && !sopDismissed && (
+              <div>
+                {sopChecking && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    background: '#f8fafc', borderRadius: 8,
+                    padding: '10px 14px', border: '1px solid var(--border)',
+                  }}>
+                    <div className="spinner spinner-dark" style={{ width: 14, height: 14, borderWidth: 2, flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Checking SOPs…</span>
+                  </div>
+                )}
+                {!sopChecking && sopFlags.length > 0 && (
+                  <div style={{
+                    background: '#fefce8', border: '1.5px solid #f59e0b',
+                    borderRadius: 10, padding: '14px 16px',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: '#92400e' }}>⚠️ SOP Check</span>
+                      <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                        <button
+                          onClick={runSopCheck}
+                          style={{ fontSize: 12, color: '#92400e', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                        >
+                          Re-check
+                        </button>
+                        <button
+                          onClick={() => setSopDismissed(true)}
+                          style={{ fontSize: 18, color: '#92400e', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                    {sopFlags.map(({ sopName, flags }) => (
+                      <div key={sopName} style={{ marginBottom: 10 }}>
+                        <div style={{ fontSize: 13, color: '#78350f', marginBottom: 6, lineHeight: 1.5 }}>
+                          Based on your <strong>{sopName}</strong> SOP, you may not have mentioned:
+                        </div>
+                        {flags.map((flag, i) => (
+                          <div key={i} style={{ fontSize: 13, color: '#78350f', paddingLeft: 10, marginBottom: 4, lineHeight: 1.5 }}>
+                            · {flag.replace(/^you may not have mentioned[:\s]*/i, '').replace(/^no mention of[:\s]*/i, '')}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="form-group">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>

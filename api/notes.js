@@ -161,6 +161,27 @@ export default async function handler(req, res) {
     const { mode, transcript, profile, existing, newEntry, settings } = req.body
     const settingsInstructions = buildSettingsInstructions(settings)
 
+    // SOP check — compare transcript against checklist items
+    if (mode === 'sop_check') {
+      const { transcript: tx, checklist } = req.body
+      if (!checklist?.length) return res.status(200).json({ flags: [] })
+
+      const userMessage = `You are reviewing a pest control technician's field notes transcript against their SOP checklist.\n\nTRANSCRIPT:\n${tx}\n\nSOP CHECKLIST:\n${checklist.map((item, i) => `${i + 1}. ${item}`).join('\n')}\n\nReview the transcript and identify any checklist items that don't appear to have been mentioned or addressed. Be lenient — if something is implied or partially mentioned, don't flag it. Only flag items that are clearly absent.\n\nRespond with a JSON array of strings. Each string is a soft, conversational flag starting with "You may not have mentioned..." or "No mention of...". If nothing is missing, return an empty array. No markdown, just the JSON array.`
+
+      const raw = await callClaude(apiKey, {
+        model: 'claude-sonnet-4-5',
+        max_tokens: 512,
+        system: 'You are a helpful assistant reviewing pest control field notes against SOPs. Be lenient and practical — flag only clearly missing items.',
+        messages: [{ role: 'user', content: userMessage }],
+      })
+      const cleaned = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
+      try {
+        return res.status(200).json({ flags: JSON.parse(cleaned) })
+      } catch {
+        return res.status(200).json({ flags: [] })
+      }
+    }
+
     if (mode === 'pest_summary') {
       const text = await callClaude(apiKey, {
         model: 'claude-sonnet-4-5',

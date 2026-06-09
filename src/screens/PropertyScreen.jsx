@@ -334,7 +334,7 @@ export default function PropertyScreen({ navigate, property: initialProperty }) 
         <button
           className="btn btn-primary"
           style={{ flex: 1 }}
-          onClick={() => navigate('record', { property: prop, mode: 'visit' })}
+          onClick={() => navigate('serviceSelector', { property: prop })}
         >
           🎙 Visit Note
         </button>

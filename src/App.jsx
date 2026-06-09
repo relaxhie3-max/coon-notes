@@ -8,6 +8,9 @@ import RecordScreen from './screens/RecordScreen'
 import ResultsScreen from './screens/ResultsScreen'
 import VisitDetailScreen from './screens/VisitDetailScreen'
 import SettingsScreen from './screens/SettingsScreen'
+import SOPLibraryScreen from './screens/SOPLibraryScreen'
+import SOPEditScreen from './screens/SOPEditScreen'
+import ServiceSelectorScreen from './screens/ServiceSelectorScreen'
 
 function formatTime(s) {
   const m = Math.floor(s / 60).toString().padStart(2, '0')
@@ -84,11 +87,14 @@ function AppInner() {
       case 'home':        return <HomeScreen navigate={navigate} />
       case 'addProperty': return <AddPropertyScreen navigate={navigate} />
       case 'property':    return <PropertyScreen navigate={navigate} property={params.property} />
-      case 'record':      return <RecordScreen navigate={navigate} property={params.property} mode={params.mode || 'visit'} />
+      case 'record':      return <RecordScreen navigate={navigate} property={params.property} mode={params.mode || 'visit'} selectedServices={params.selectedServices || []} tier={params.tier || ''} visitType={params.visitType || 'recurring'} />
       case 'results':     return <ResultsScreen navigate={navigate} property={params.property} transcript={params.transcript} notes={params.notes} mode={params.mode || 'visit'} />
       case 'visitDetail': return <VisitDetailScreen navigate={navigate} property={params.property} visit={params.visit} />
-      case 'settings':    return <SettingsScreen navigate={navigate} />
-      default:            return <HomeScreen navigate={navigate} />
+      case 'settings':         return <SettingsScreen navigate={navigate} />
+      case 'sopLibrary':       return <SOPLibraryScreen navigate={navigate} />
+      case 'sopEdit':          return <SOPEditScreen navigate={navigate} sop={params.sop} />
+      case 'serviceSelector':  return <ServiceSelectorScreen navigate={navigate} property={params.property} />
+      default:                 return <HomeScreen navigate={navigate} />
     }
   }
 

@@ -67,6 +67,14 @@ export default function HomeScreen({ navigate }) {
         </div>
         <button
           className="btn btn-icon"
+          onClick={() => navigate('sopLibrary')}
+          title="SOP Library"
+          style={{ fontSize: 18 }}
+        >
+          📋
+        </button>
+        <button
+          className="btn btn-icon"
           onClick={() => navigate('settings')}
           title="Settings"
           style={{ fontSize: 18 }}
